@@ -16,9 +16,50 @@ import winerror
 import time
 import sys
 
-class aservice(win32serviceutil.ServiceFramework):
+class Service(win32serviceutil.ServiceFramework):
+	_svc_name_ = None 
+	_svc_display_name_ = None
+	
+	def __init__(self, *args):
+		win32serviceutil.ServiceFramework.__init__(self, *args)
+		self.stop_event = win32event.CreateEvent(None, 0, 0, None)
+
+    def log(self, msg):
+		servicemanager.LogInfoMsg(str(msg))
+        
+    def sleep(self, sec):
+        win32api.Sleep(sec*1000, True)
+        
+	def SvcDoRun(self):
+		self.ReportServiceStatus(win32service.SERVICE_START_PENDING)
+		try:
+			self.ReportServiceStatus(win32service.SERVICE_RUNNING)
+			self.log('Starting %s' % self._svc_display_name_)
+			self.start()
+			win32event.WaitForSingleObject(self.stop_event, win32event.INFINITE)
+			self.log('%s Finished' % self._svc_display_name_)
+		except Exception, x:
+			self.log('Exception : %s' % x)
+			self.SvcStop()
+
+    def SvcStop(self):
+		self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
+		self.log('Service %s stopping ' % self._svc_display_name_)
+		self.stop()
+		self.log('%s ' % self._svc_display_name_)
+		win32event.SetEvent(self.stop_event)
+		self.ReportServiceStatus(win32service.SERVICE_STOPPED)
+	
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+
+class PythonService(Service):
     _svc_name_ = "aservice"
-    _svc_display_name_ = "aservice - It Does nothing"
+    _svc_display_name_ = "Sample Python service"
     _svc_deps_ = ["EventLog"]
 
     def __init__(self,args):
